@@ -168,7 +168,7 @@ local function change_dirs(path)
     return previous_worktree
 end
 
-local function create_worktree_job(path, branch, found_branch)
+local function create_worktree_job(path, branch, base_branch, found_branch)
 
     local worktree_add_cmd = 'git'
     local worktree_add_args = {'worktree', 'add'}
@@ -180,6 +180,10 @@ local function create_worktree_job(path, branch, found_branch)
     else
         table.insert(worktree_add_args, path)
         table.insert(worktree_add_args, branch)
+    end
+
+    if base_branch and base_branch ~= "" then
+        table.insert(worktree_add_args, base_branch)
     end
 
     return Job:new({
@@ -292,8 +296,24 @@ local function has_branch(branch, cb)
     end):start()
 end
 
-local function create_worktree(path, branch, upstream, found_branch)
-    local create = create_worktree_job(path, branch, found_branch)
+local function get_base_branch()
+    local current = vim.trim(vim.fn.system("git branch --show-current"))
+
+    if current ~= "" and current ~= "HEAD" then
+        return current
+    end
+
+    local default = vim.trim(vim.fn.system("git rev-parse --abbrev-ref origin/HEAD | cut -c8-"))
+    if default ~= "" then
+        return default
+    end
+
+    -- Defualt and skip base branch like old flow anyways
+    return ""
+end
+
+local function create_worktree(path, branch, base_branch, upstream, found_branch)
+    local create = create_worktree_job(path, branch, base_branch, found_branch)
 
     local worktree_path
     if Path:new(path):is_absolute() then
@@ -393,6 +413,8 @@ M.create_worktree = function(path, branch, upstream)
         end
     end
 
+    local base_branch = get_base_branch()
+
     M.setup_git_info()
 
     has_worktree(path, function(found)
@@ -401,7 +423,7 @@ M.create_worktree = function(path, branch, upstream)
         end
 
         has_branch(branch, function(found_branch)
-            create_worktree(path, branch, upstream, found_branch)
+            create_worktree(path, branch, base_branch, upstream, found_branch)
         end)
     end)
 
