@@ -182,7 +182,7 @@ local function create_worktree_job(path, branch, base_branch, found_branch)
         table.insert(worktree_add_args, branch)
     end
 
-    if base_branch and base_branch ~= "" then
+    if not found_branch and base_branch and base_branch ~= "" then
         table.insert(worktree_add_args, base_branch)
     end
 
